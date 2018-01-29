@@ -261,7 +261,22 @@ type Buy struct {
 	ResultingTrades []ResultTrades
 }
 
-func (p *Poloniex) TradeBuy(currencyPair string, rate, amount float64) (buy Buy, err error) {
+type TradeAdditional int
+
+const (
+	UNDEFINED TradeAdditional = iota
+	FILL_OR_KILL
+	IMMEDIATE_OR_CANCEL
+	POST_ONLY
+)
+
+//Trade Buy send a request to poloniex api to place a limit buy order in a given market.
+//If successful, the method will return the order number
+//You may optionally set "fillOrKill", "immediateOrCancel" or "postOnly".
+//A "fill-or-kill" order will either fill in its entirety or be completely aborted.
+//An "immediate-or-cancel" order can be partially or completely filled, but any portion of the order that cannot be filled immediately will be canceled rather than left on the order book.
+//A "post-only" order will only be placed if no portion of it fills immediately; this guarantees you will never pay the taker fee on any part of the order that fills.
+func (p *Poloniex) TradeBuy(currencyPair string, rate, amount float64, additional TradeAdditional) (buy Buy, err error) {
 
 	respch := make(chan []byte)
 	errch := make(chan error)
@@ -269,6 +284,14 @@ func (p *Poloniex) TradeBuy(currencyPair string, rate, amount float64) (buy Buy,
 	parameters := map[string]string{"currencyPair": strings.ToUpper(currencyPair)}
 	parameters["rate"] = strconv.FormatFloat(float64(rate), 'f', 8, 64)
 	parameters["amount"] = strconv.FormatFloat(float64(amount), 'f', 8, 64)
+	switch additional {
+	case FILL_OR_KILL:
+		parameters["fillOrKill"] = string(1)
+	case IMMEDIATE_OR_CANCEL:
+		parameters["immediateOrCancel"] = string(1)
+	case POST_ONLY:
+		parameters["fillpostOnlyOrKill"] = string(1)
+	}
 
 	go p.tradingRequest("buy", parameters, respch, errch)
 
@@ -285,7 +308,13 @@ func (p *Poloniex) TradeBuy(currencyPair string, rate, amount float64) (buy Buy,
 
 type Sell Buy
 
-func (p *Poloniex) TradeSell(currencyPair string, rate, amount float64) (sell Sell, err error) {
+//Trade Sell send a request to poloniex api to place a limit sell order in a given market.
+//If successful, the method will return the order number
+//You may optionally set "fillOrKill", "immediateOrCancel" or "postOnly".
+//A "fill-or-kill" order will either fill in its entirety or be completely aborted.
+//An "immediate-or-cancel" order can be partially or completely filled, but any portion of the order that cannot be filled immediately will be canceled rather than left on the order book.
+//A "post-only" order will only be placed if no portion of it fills immediately; this guarantees you will never pay the taker fee on any part of the order that fills.
+func (p *Poloniex) TradeSell(currencyPair string, rate, amount float64, additional TradeAdditional) (sell Sell, err error) {
 
 	respch := make(chan []byte)
 	errch := make(chan error)
@@ -293,6 +322,14 @@ func (p *Poloniex) TradeSell(currencyPair string, rate, amount float64) (sell Se
 	parameters := map[string]string{"currencyPair": strings.ToUpper(currencyPair)}
 	parameters["rate"] = strconv.FormatFloat(float64(rate), 'f', 8, 64)
 	parameters["amount"] = strconv.FormatFloat(float64(amount), 'f', 8, 64)
+	switch additional {
+	case FILL_OR_KILL:
+		parameters["fillOrKill"] = string(1)
+	case IMMEDIATE_OR_CANCEL:
+		parameters["immediateOrCancel"] = string(1)
+	case POST_ONLY:
+		parameters["fillpostOnlyOrKill"] = string(1)
+	}
 
 	go p.tradingRequest("sell", parameters, respch, errch)
 
