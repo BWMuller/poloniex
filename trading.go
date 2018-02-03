@@ -2,6 +2,7 @@ package poloniex
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -261,6 +262,14 @@ type Buy struct {
 	ResultingTrades []ResultTrades
 }
 
+func (o Buy) String() string {
+	res, err := json.Marshal(o)
+	if err != nil {
+		return fmt.Sprint(o)
+	}
+	return string(res)
+}
+
 type TradeAdditional int
 
 const (
@@ -276,7 +285,7 @@ const (
 //A "fill-or-kill" order will either fill in its entirety or be completely aborted.
 //An "immediate-or-cancel" order can be partially or completely filled, but any portion of the order that cannot be filled immediately will be canceled rather than left on the order book.
 //A "post-only" order will only be placed if no portion of it fills immediately; this guarantees you will never pay the taker fee on any part of the order that fills.
-func (p *Poloniex) TradeBuy(currencyPair string, rate, amount float64, additional TradeAdditional) (buy Buy, err error) {
+func (p *Poloniex) TradeBuy(currencyPair string, rate float64, amount float64, additional TradeAdditional) (buy Buy, err error) {
 
 	respch := make(chan []byte)
 	errch := make(chan error)
@@ -314,7 +323,7 @@ type Sell Buy
 //A "fill-or-kill" order will either fill in its entirety or be completely aborted.
 //An "immediate-or-cancel" order can be partially or completely filled, but any portion of the order that cannot be filled immediately will be canceled rather than left on the order book.
 //A "post-only" order will only be placed if no portion of it fills immediately; this guarantees you will never pay the taker fee on any part of the order that fills.
-func (p *Poloniex) TradeSell(currencyPair string, rate, amount float64, additional TradeAdditional) (sell Sell, err error) {
+func (p *Poloniex) TradeSell(currencyPair string, rate float64, amount float64, additional TradeAdditional) (sell Sell, err error) {
 
 	respch := make(chan []byte)
 	errch := make(chan error)
