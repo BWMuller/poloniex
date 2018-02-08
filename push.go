@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/go-kit/kit/log"
 	"golang.org/x/net/websocket"
 )
 
@@ -67,12 +68,13 @@ type NewTrade struct {
 }
 
 type WSClient struct {
-	Subs       map[string]chan interface{}
-	LogBus     chan<- string
-	logger     Logger
-	wssStopChs map[string]chan bool
-	wssLock    *sync.Mutex
-	wssClient  *websocket.Conn
+	Subs         map[string]chan interface{}
+	logBus       chan<- string
+	logger       log.Logger
+	wssStopChs   map[string]chan bool
+	logBusLogger Logger
+	wssLock      *sync.Mutex
+	wssClient    *websocket.Conn
 }
 
 func setchannelids() (err error) {
@@ -97,36 +99,42 @@ func setchannelids() (err error) {
 	return
 }
 
-func NewWSClient(args ...bool) (wsclient *WSClient, err error) {
+func NewWSClient(wsLogger log.Logger, args ...bool) (*WSClient, error) {
 	ws, err := websocket.Dial(pushAPIUrl, "", origin)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	wsclient = &WSClient{
+	wsclient := &WSClient{
 		wssClient:  ws,
 		Subs:       make(map[string]chan interface{}),
 		wssStopChs: make(map[string]chan bool),
 		wssLock:    &sync.Mutex{},
+		logger:     wsLogger,
 	}
 
 	if len(args) > 0 && args[0] {
 		logbus := make(chan string)
-		wsclient.LogBus = logbus
-		wsclient.logger = Logger{isOpen: true, Lock: &sync.Mutex{}}
+		wsclient.logBus = logbus
+		wsclient.logBusLogger = Logger{isOpen: true, Lock: &sync.Mutex{}}
 
-		go wsclient.logger.LogRoutine(logbus)
+		go wsclient.logBusLogger.LogRoutine(logbus)
 	}
 
 	if err = setchannelids(); err != nil {
-		return
+		return nil, err
 	}
 
-	if wsclient.logger.isOpen {
-		wsclient.LogBus <- "[*] Created New WSClient."
-	}
+	wsclient.log("[*] Created New WSClient.")
 
-	return
+	return wsclient, err
+}
+
+func (ws *WSClient) log(msg string) {
+	if ws.logBusLogger.isOpen {
+		ws.logBus <- msg
+	}
+	ws.logger.Log(msg)
 }
 
 func (ws *WSClient) subscribe(chid, chname string) (err error) {
@@ -151,9 +159,7 @@ func (ws *WSClient) subscribe(chid, chname string) (err error) {
 		return err
 	}
 
-	if ws.logger.isOpen {
-		ws.LogBus <- fmt.Sprintf("[*] Subscribed channel '%s'.\n", chname)
-	}
+	ws.log(fmt.Sprintf("[*] Subscribed channel '%s'.\n", chname))
 
 	go func(chid string) {
 		var imsg []interface{}
@@ -165,36 +171,39 @@ func (ws *WSClient) subscribe(chid, chname string) (err error) {
 			case <-ws.wssStopChs[chname]:
 				close(ws.wssStopChs[chname])
 				delete(ws.wssStopChs, chname)
-				if ws.logger.isOpen {
-					ws.LogBus <- fmt.Sprintf("[*] Unsubscribed channel '%s'.\n", chname)
-				}
+				ws.log(fmt.Sprintf("[*] Unsubscribed channel '%s'.\n", chname))
 				return
 			default:
 			}
 
 			read_len, err := ws.wssClient.Read(rmsg)
 			if err != nil {
+				ws.log(fmt.Sprintf("[*] Error reading from channel: %s", err))
 				return
 			}
 
 			err = json.Unmarshal(rmsg[:read_len], &imsg)
 			if err != nil {
+				ws.log(fmt.Sprintf("[*] Error decoding json: %s", err))
 				continue
 			}
 
 			arg, ok := imsg[0].(float64)
 			if !ok {
+				ws.log(fmt.Sprintf("[*] Error decoding response key: %s", imsg))
 				continue
 			}
 
 			key := strconv.FormatFloat(arg, 'f', 0, 64)
 
 			if key != chid || len(imsg) < 3 {
+				ws.log(fmt.Sprintf("[*] Error response key not matching or data length to short: %s", imsg))
 				continue
 			}
 
 			args, ok := imsg[2].([]interface{})
 			if !ok {
+				ws.log(fmt.Sprintf("[*] Error converting response to interface: %s", imsg))
 				continue
 			}
 
@@ -202,11 +211,13 @@ func (ws *WSClient) subscribe(chid, chname string) (err error) {
 			case TICKER:
 				wsupdate, err = convertArgsToTicker(args)
 				if err != nil {
+					ws.log(fmt.Sprintf("[*] Error converting args to ticker: %s", err))
 					continue
 				}
 			case stringInSlice(chid, marketChannels):
 				wsupdate, err = convertArgsToMarketUpdate(args)
 				if err != nil {
+					ws.log(fmt.Sprintf("[*] Error checking if string is in slice: %s", err))
 					continue
 				}
 			default:
@@ -215,8 +226,7 @@ func (ws *WSClient) subscribe(chid, chname string) (err error) {
 			select {
 			case ws.Subs[chname] <- wsupdate:
 			default:
-
-				/* fmt.Println("[BLOCKED] No Message Sent! ")  //DEBUG */
+				ws.log("[BLOCKED] No Message Sent! ")
 			}
 		}
 	}(chid)
