@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	polo "github.com/iowar/poloniex"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -23,7 +24,7 @@ func main() {
 	//resp, err := poloniex.PubReturnLoanOrders("BTC")
 
 	if err != nil {
-		panic(err)
+		panic(errors.Wrap(err, "Erro getting public ticker"))
 	}
 
 	fmt.Println(resp)
