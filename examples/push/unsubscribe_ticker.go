@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	polo "github.com/iowar/poloniex"
+	polo "github.com/BWMuller/poloniex"
 )
 
 func main() {

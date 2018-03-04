@@ -2,12 +2,12 @@
 Poloniex Push, Public and Trading APIs.
 # Install
 ~~~ go
-$ go get github.com/iowar/poloniex
+$ go get github.com/BWMuller/poloniex
 ~~~ 
 
 # APIs
 ~~~go
-import polo "github.com/iowar/poloniex"
+import polo "github.com/BWMuller/poloniex"
 ~~~
 ## Push Api
 Create websocket client.
@@ -90,7 +90,7 @@ for {
 TrollBox is disabled from poloniex. We will give support if it is enable.
 
 ### Examples
-* See [Push Api Examples](https://github.com/iowar/poloniex/tree/master/examples/push)
+* See [Push Api Examples](https://github.com/BWMuller/poloniex/tree/master/examples/push)
 
 ## Public Api
 ~~~go
@@ -113,7 +113,7 @@ if err != nil{
 }
 fmt.Println(resp)
 ~~~
-* See [Public Api Examples](https://github.com/iowar/poloniex/tree/master/examples/public)
+* See [Public Api Examples](https://github.com/BWMuller/poloniex/tree/master/examples/public)
 
 ## Trading Api
 ~~~go
@@ -148,7 +148,7 @@ if err != nil{
 }
 fmt.Println(resp)
 ~~~
-* See [Trading Api Examples](https://github.com/iowar/poloniex/tree/master/examples/trading)
+* See [Trading Api Examples](https://github.com/BWMuller/poloniex/tree/master/examples/trading)
 
 License
 ----
